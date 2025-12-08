@@ -1,0 +1,17 @@
+Bootstrap: docker
+From: alpine:latest
+
+%post
+    apk add --no-cache bash
+
+%environment
+    export GREETING="Hello from Apptainer!"
+
+%runscript
+    echo $GREETING
+    echo "This container was built on $(date)"
+    exec "$@"
+
+%labels
+    Author Student
+    Version v1.0

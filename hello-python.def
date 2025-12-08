@@ -1,0 +1,8 @@
+# Small official Python base
+FROM python:3.12-slim
+
+# Show prints immediately (no buffering)
+ENV PYTHONUNBUFFERED=1
+
+# Default command: run a one-liner
+CMD ["python", "-c", "print('Hello from Python in Docker!')"]

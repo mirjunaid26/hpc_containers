@@ -1,0 +1,39 @@
+Bootstrap: docker
+From: ubuntu:20.04
+
+%labels
+    Maintainer InfoSec Team
+    Version 2.0.1
+    Description Advanced Example
+
+%help
+    This container demonstrates advanced features.
+    Usage: apptainer run complex.sif [args]
+
+%setup
+    touch ${SINGULARITY_ROOTFS}/tmp/setup_was_here
+
+%files
+    # Copy a dummy file (we'll create it in the instruction)
+    /etc/hosts /opt/copy_of_hosts
+
+%environment
+    export LC_ALL=C
+    export APP_PORT=8080
+
+%post
+    apt-get update && apt-get install -y curl netcat
+    mkdir -p /app/data
+    echo "Build complete at $(date)" > /app/build_info.txt
+
+%startscript
+    nc -l -p $APP_PORT -e /bin/cat
+
+%test
+    grep -q "Build complete" /app/build_info.txt
+    if [ $? -eq 0 ]; then
+        echo "Build info check passed"
+    else
+        echo "Build info check failed"
+        exit 1
+    fi

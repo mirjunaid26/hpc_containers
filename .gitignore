@@ -1,0 +1,6 @@
+*.tar
+*.sif
+blobs/
+.gemini/
+__pycache__/
+*.pyc
