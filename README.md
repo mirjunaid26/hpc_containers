@@ -29,6 +29,11 @@ Welcome to the advanced Apptainer (formerly Singularity) tutorial. This guide is
    - MPI Support and Bind Paths.
    - Running on Slurm/PBS.
 
+5. [LLM Training on HPC](05_llm_training.md)
+   - Setup for HuggingFace & NVIDIA.
+   - Cache management.
+   - Distributed training basics.
+
 ## Exercises
 
 You will find hands-on exercises in the `exercises/` directory. Each module will reference specific files there.

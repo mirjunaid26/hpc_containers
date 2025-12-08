@@ -1,0 +1,24 @@
+Bootstrap: docker
+From: pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+
+%labels
+    Description LLM Training Container
+    Author HPC User
+
+%post
+    # Install git and system deps
+    apt-get update && apt-get install -y git
+
+    # Install LLM specific libraries
+    pip install transformers datasets accelerate bitsandbytes peft scipy
+
+%environment
+    # Set default precision to potentially speed up (optional)
+    export TORCH_DTYPE=float16
+
+%runscript
+    python "$@"
+
+%test
+    python -c "import transformers; print('Transformers version:', transformers.__version__)"
+    python -c "import bitsandbytes; print('BitsAndBytes version:', bitsandbytes.__version__)"
