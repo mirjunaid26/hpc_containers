@@ -40,10 +40,12 @@ apptainer pull ubuntu.sif docker://ubuntu:22.04
 
 In the `exercises/` folder, look at `01_hello.def`. This is a definition file, the "recipe" for building an image.
 
-### Building (Requires Root)
+### Building (Requires Root, or `--fakeroot`)
 
-*Note: Building usually requires root access. If you are on an HPC cluster, you might need to build on your laptop or use the `--remote` builder feature.*
+*Note: Building normally requires root access. Most HPC login nodes don't give you that, but Apptainer's unprivileged `--fakeroot` mode works on many systems without any admin involvement -- this is what the exercises in this repo use. If `--fakeroot` isn't available or reliable on your system, fall back to building on your own laptop (where you do have root) and transferring the resulting `.sif` with `scp`, or use the `--remote` builder feature.*
+
+*One thing worth knowing if a `--fakeroot` build fails partway through `%post` with a DNS/network error even though the base-image pull itself succeeded: this has been observed on JURECA specifically with an Alpine-based image (`apk add` failing to resolve hosts), while the same build succeeded cleanly after switching the base image to `ubuntu:22.04` (`apt-get`). If you hit this, try a Debian/Ubuntu-based image before assuming your site blocks builds entirely.*
 
 ```bash
-sudo apptainer build hello.sif exercises/01_hello.def
+apptainer build --fakeroot hello.sif exercises/01_hello.def
 ```

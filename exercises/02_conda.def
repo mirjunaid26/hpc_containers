@@ -1,34 +1,41 @@
 Bootstrap: docker
-From: ubuntu:22.04
+From: condaforge/miniforge3:26.3.2-3
+# Pin this tag deliberately -- check https://hub.docker.com/r/condaforge/miniforge3/tags
+# for the current release before reusing. Miniforge defaults to the conda-forge
+# channel (fully open-source, no Anaconda ToS questions), unlike continuumio/miniconda3.
 
 %post
-    # Install basic utilities
-    apt-get update && apt-get install -y wget bzip2
-
-    # Install Miniconda
-    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-    bash miniconda.sh -b -p /opt/miniconda
-    rm miniconda.sh
-
-    # Initialize Conda for shell interaction
-    . /opt/miniconda/etc/profile.d/conda.sh
-    
-    # Create an environment and install packages
-    conda create -n myenv python=3.9 numpy pandas -y
-    
-    # Clean up
+    # Conda is already installed in this base image at /opt/conda --
+    # no wget of an installer script, no separate network hop.
+    conda create -n myenv python=3.11 numpy pandas -y
     conda clean --all -y
-    apt-get clean
 
 %environment
-    # Set the path so 'python' refers to our conda env
-    export PATH=/opt/miniconda/envs/myenv/bin:$PATH
+    # Make 'python' resolve to our env by default
+    export PATH=/opt/conda/envs/myenv/bin:$PATH
 
 %runscript
-    # Default action
     exec python "$@"
 
+%labels
+    Author  Student
+    Version v1.0
+    Base    condaforge/miniforge3:26.3.2-3 (Docker Hub)
+
+%help
+    A conda-based Python data-science environment, built by pulling a
+    ready-made Miniforge image from Docker Hub instead of downloading the
+    Miniconda installer script at build time. Same teaching goal as before
+    (conda for non-Python/binary dependencies) with one less external
+    network hop during the build -- and it defaults to conda-forge, so
+    there is no Anaconda default-channel licensing question to think about.
+
+    Build:
+        apptainer build --fakeroot conda.sif 02_conda.def
+
+    Run:
+        apptainer exec conda.sif python -c "import numpy; print(numpy.__version__)"
+
 %test
-    # Verify imports work
-    export PATH=/opt/miniconda/envs/myenv/bin:$PATH
+    export PATH=/opt/conda/envs/myenv/bin:$PATH
     python -c "import numpy; print('Numpy version:', numpy.__version__)"

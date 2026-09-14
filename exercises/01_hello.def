@@ -13,5 +13,5 @@ From: ubuntu:22.04
     exec "$@"
 
 %labels
-    Author  Student
+    Author Student
     Version v1.0

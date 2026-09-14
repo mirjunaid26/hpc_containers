@@ -15,19 +15,22 @@ Managing Python environments in HPC can be challenging due to conflicting depend
 
 ## Exercise: Building a Data Science Container
 
-In this exercise, we will build a container with a specific version of Python and some common libraries (numpy, pandas) using Miniconda.
+In this exercise, we will build a container with a specific version of Python and some common libraries (numpy, pandas) using Conda.
 
 See `exercises/02_conda.def`.
 
 ### Key Elements in the Definition File
 
--   **Installation**: We download and install Miniconda in `%post`.
--   **Path Management**: We add the conda bin directory to `$PATH` in `%environment`.
+-   **Base image**: We pull `condaforge/miniforge3` directly from Docker Hub, which already has Conda installed at `/opt/conda` -- no installer script to download in `%post`. (An earlier version of this exercise downloaded the Miniconda installer with `wget` during `%post`; on some HPC login nodes that extra network hop fails under `--fakeroot` even though the base-image pull itself succeeds, so we now start from a pre-built image instead.)
+-   **Environment creation**: `conda create -n myenv ...` builds the actual environment in `%post`.
+-   **Path Management**: We add the conda env's `bin` directory to `$PATH` in `%environment`.
+-   **Self-check**: `%test` verifies the environment with a quick `import numpy`, runnable any time via `apptainer test conda.sif`.
 
 ### Running python scripts
 
 Once built, you can run scripts easily:
 
 ```bash
-apptainer exec conda_env.sif python script.py
+apptainer build --fakeroot conda.sif exercises/02_conda.def
+apptainer exec conda.sif python script.py
 ```
