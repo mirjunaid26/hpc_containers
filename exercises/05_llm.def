@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+From: pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
 
 %labels
     Description LLM Training Container
@@ -7,7 +7,7 @@ From: pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
 
 %post
     # Install git and system deps
-    apt-get update && apt-get install -y git
+    apt-get update && apt-get install -y --no-install-recommends git
 
     # Install LLM specific libraries
     pip install transformers datasets accelerate bitsandbytes peft scipy
@@ -20,5 +20,6 @@ From: pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
     python "$@"
 
 %test
-    python -c "import transformers; print('Transformers version:', transformers.__version__)"
+    python -c "import torch; print('Torch version:', torch.__version__)"
+    python -c "import transformers; assert transformers.utils.is_torch_available(), 'transformers cannot see PyTorch -- check torch/transformers version compatibility'; print('Transformers version:', transformers.__version__)"
     python -c "import bitsandbytes; print('BitsAndBytes version:', bitsandbytes.__version__)"

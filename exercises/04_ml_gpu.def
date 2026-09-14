@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime
+From: pytorch/pytorch:2.4.0-cuda12.4-cudnn9-runtime
 
 %post
     pip install scikit-learn matplotlib
