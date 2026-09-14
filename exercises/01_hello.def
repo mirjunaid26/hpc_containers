@@ -1,8 +1,8 @@
 Bootstrap: docker
-From: alpine:latest
+From: ubuntu:22.04
 
 %post
-    apk add --no-cache bash
+    apt-get update && apt-get install -y bash
 
 %environment
     export GREETING="Hello from Apptainer!"
@@ -13,5 +13,5 @@ From: alpine:latest
     exec "$@"
 
 %labels
-    Author Student
+    Author  Student
     Version v1.0
