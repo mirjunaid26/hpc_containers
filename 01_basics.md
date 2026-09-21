@@ -52,5 +52,5 @@ In the `exercises/` folder, look at `01_hello.def`. This is a definition file, t
 *Both were fixed the same way: use a newer glibc-based image. `ubuntu:22.04` and later, or Debian-bookworm-based images, clear the bar -- see `01_hello.def` and `03_complex.def`. If you hit either symptom, try a newer Debian/Ubuntu base before assuming your site blocks builds entirely.*
 
 ```bash
-apptainer build --fakeroot hello.sif exercises/01_hello.def
+apptainer build --fakeroot hello.sif ../exercises/01_hello.def
 ```
