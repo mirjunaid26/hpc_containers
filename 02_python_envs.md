@@ -31,6 +31,6 @@ See `exercises/02_conda.def`.
 Once built, you can run scripts easily:
 
 ```bash
-apptainer build --fakeroot conda.sif exercises/02_conda.def
+apptainer build --fakeroot conda.sif ../02_building/exercises/02_conda.def
 apptainer exec conda.sif python script.py
 ```
