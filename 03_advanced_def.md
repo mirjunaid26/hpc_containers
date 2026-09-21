@@ -53,7 +53,7 @@ Examine `exercises/03_complex.def`. It demonstrates:
 -   **`%startscript`**: it calls `nc -l -p $APP_PORT -e /bin/cat`, which needs the `-e` flag. Installing the ambiguous `netcat` package on Ubuntu resolves to `netcat-openbsd`, which is compiled *without* `-e` (a deliberate Debian/Ubuntu security choice). This exercise now installs `netcat-traditional` explicitly instead, which keeps `-e` working.
 
 ```bash
-apptainer build --fakeroot complex.sif exercises/03_complex.def
+apptainer build --fakeroot complex.sif ../02_building/exercises/03_complex.def
 apptainer test complex.sif
 apptainer instance start complex.sif complex_test
 apptainer instance stop complex_test
