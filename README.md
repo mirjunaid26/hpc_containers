@@ -8,6 +8,35 @@ Originally written for a 3-hour hands-on workshop ("Containerizing HPC Workflows
 - Basic familiarity with Linux command line.
 - Access to a system with Apptainer installed (or Singularity).
 - Basic understanding of what a container is (e.g., Docker experience is helpful but not required).
+- **Before Module 2 (Building):** your home directory quota is small (5 GB on JURECA) and every `apptainer pull`/`build` writes into `$HOME/.apptainer` by default — one or two exercises can fill it. Complete the one-time workspace setup below *before* building anything.
+
+## Before You Start: Workspace Setup
+
+Run this once, from your login shell, before your first `apptainer pull` or `build`:
+
+```bash
+export WORK=$PROJECT_training2638/container-workshop/$USER
+echo "export WORK=$PROJECT_training2638/container-workshop/\$USER" >> ~/.bashrc
+
+mkdir -p $WORK/apptainer_cache $WORK/apptainer_tmp
+
+rm -rf $HOME/.apptainer        # safe if you haven't pulled/built anything yet
+ln -s $WORK/apptainer_cache $HOME/.apptainer
+
+export APPTAINER_TMPDIR=$WORK/apptainer_tmp
+echo 'export APPTAINER_TMPDIR=$WORK/apptainer_tmp' >> ~/.bashrc
+```
+
+This redirects Apptainer's cache (via the `.apptainer` symlink — works regardless of
+shell/job context) and its build-time scratch space (via `APPTAINER_TMPDIR`, which
+also needs its target directory to exist beforehand — Apptainer doesn't create it
+for you) onto project storage instead of your 5 GB home quota. Do all your own
+build/run work inside `$WORK`, not inside `01_interacting/`, `02_building/`, or
+`03_running_on_hpc/` — those are shared, read-only reference material.
+
+If you're running `apptainer build` from a Slurm job script rather than
+interactively, add the `export APPTAINER_TMPDIR=...` line to that script directly
+too — batch jobs don't always source `~/.bashrc`.
 
 ## Workshop materials layout
 
@@ -23,19 +52,39 @@ container-workshop/
 │       ├── ubuntu.sif
 │       └── ubuntu_22.04.sif
 ├── 02_building/
-│   ├── 01_hello.def    hello.sif
-│   ├── 02_conda.def    conda.sif
-│   ├── 03_complex.def  complex.sif
-│   ├── 04_ml_gpu.def   ml_gpu.sif
-│   └── 05_llm.def      llm.sif
-└── 03_running_on_hpc/
-    ├── job_gpu_llm.slurm
-    ├── job_cpu_matmul.slurm
-    ├── llm_training_script.py
-    └── matmul_cpu.py
+│   ├── exercises/
+│   │   ├── 01_hello.def
+│   │   ├── 02_conda.def
+│   │   ├── 03_complex.def
+│   │   ├── 04_ml_gpu.def
+│   │   └── 05_llm.def
+│   ├── hello.sif
+│   ├── conda.sif
+│   ├── complex.sif
+│   ├── ml_gpu.sif
+│   └── llm.sif
+├── 03_running_on_hpc/
+│   ├── job_gpu_llm.slurm
+│   ├── job_cpu_matmul.slurm
+│   ├── prefetch_model.sh
+│   ├── llm_training_script.py
+│   └── matmul_cpu.py
+├── ngc_pytorch.sif          <- pre-staged NGC image, see Module 4 note below
+└── <your-username>/          <- your personal work area ($WORK, see setup above)
 ```
 
-`01_interacting/` and `02_building/` ship pre-built `.sif` images alongside their source so you can either build from scratch or jump straight to running. `03_running_on_hpc/` assumes the containers in `02_building/` already exist (its Slurm scripts reference them via relative paths, e.g. `../02_building/llm.sif`).
+`.def` files live in `02_building/exercises/`; their pre-built `.sif` counterparts sit
+one level up in `02_building/` itself, so you can either build from scratch or jump
+straight to running. `03_running_on_hpc/` assumes the containers in `02_building/`
+already exist (its Slurm scripts reference them via relative paths, e.g.
+`../02_building/llm.sif`).
+
+Build commands run from your own `$WORK` folder, referencing the shared exercise
+files by relative path, e.g.:
+
+```bash
+apptainer build --fakeroot conda.sif ../02_building/exercises/02_conda.def
+```
 
 ## Table of Contents
 
@@ -69,7 +118,7 @@ container-workshop/
 **Module 1 — Interacting** (`01_interacting/`)
 - Pull, shell, exec, and run pre-built images (`python.sif`, `ubuntu.sif`, `ubuntu_22.04.sif`), including a bind-mount example with `data/test.txt`.
 
-**Module 2 — Building** (`02_building/`)
+**Module 2 — Building** (`02_building/exercises/`, pre-built `.sif` output in `02_building/`)
 - `01_hello.def` — your first container: the minimal shape of a definition file.
 - `02_conda.def` — a Python/conda data-science environment, pulled pre-built from Docker Hub.
 - `03_complex.def` — all five definition-file sections in one image (`%setup`, `%files`, `%environment`, `%post`, `%startscript`, plus `%help`/`%test`), including starting and stopping it as a background instance.
@@ -79,6 +128,9 @@ container-workshop/
 **Module 3 — Running on HPC** (`03_running_on_hpc/`)
 - `job_cpu_matmul.slurm` — a plain CPU Slurm batch job (matrix-multiply benchmark), the fast, low-risk way to learn `sbatch`/`squeue` mechanics.
 - `job_gpu_llm.slurm` (+ `prefetch_model.sh`) — the LLM fine-tuning capstone: a small LoRA fine-tune of `distilgpt2`, submitted with `--nv` on a GPU node. Since compute nodes have no internet access, the model must be pre-fetched from a login node first — see the comments in `prefetch_model.sh` and `job_gpu_llm.slurm`.
+
+**Module 4 — NGC Containers** (no dedicated exercise folder; demo/lecture only)
+- A pre-staged `ngc_pytorch.sif` sits at the top level of `container-workshop/`, so participants can run it directly without a 10 GB `apptainer pull`.
 
 Two deck topics — sharing/distributing containers, and NVIDIA NGC containers — are covered as lecture/demo material without a dedicated exercise folder.
 
@@ -105,15 +157,3 @@ Two 90-minute sessions. Times are a guideline, not a contract — see "what's op
 | 0:35–0:65 | Advanced Topics (GPU/MPI/I-O/GUI) + verify pre-built `ml_gpu.sif` with `--nv` + checkpoints | Hands-on/lecture |
 | 0:65–0:85 | LLM Capstone: `prefetch_model.sh`, then submit `job_gpu_llm.slurm` early and keep teaching while it queues + checkpoint | Hands-on |
 | 0:85–0:90 | Wrap-Up, final self-assessment, Q&A | Lecture |
-
-**A practical note on GPU queue time:** the LoRA fine-tune itself only takes a few seconds once the job starts — the real variable is how long `job_gpu_llm.slurm` sits in the `dc-gpu` queue. Submit it at the *start* of that block, not after explaining it, so queue wait overlaps with instruction time instead of adding to it.
-
-**A practical note on image size:** `04_ml_gpu.def` and `05_llm.def` pull multi-gigabyte base images from Docker Hub. Having every participant build these live risks both wall-clock time and Docker Hub rate limits. Pre-build `ml_gpu.sif` and `llm.sif` onto shared storage before the workshop and let participants run them directly; reserve the live `apptainer build --fakeroot` experience for the three cheap ones (`01_hello.def`, `02_conda.def`, `03_complex.def`).
-
-### What's essential vs. optional
-
-**Core (don't cut):** Why Containers + Fundamentals, the Interacting exercise, `01_hello.def`, `03_complex.def` (the highest-density teaching exercise — all five def-file sections in one artifact), the CPU Slurm job, and the final self-assessment/wrap-up.
-
-**Important but trimmable:** `02_conda.def` (can become an instructor walkthrough instead of everyone building it live), NGC Containers (compress to a few slides if short on time), Sharing & Distributing (a couple of commands shown, not a full lab).
-
-**Stretch / first to cut:** live-building `04_ml_gpu.def` and `05_llm.def` (pre-build these regardless — see above), the full GPU LLM capstone if the room is running late (fall back to an instructor demo with a pre-captured log), and the MPI/GUI portions of Advanced Topics, which are slide-only material with no dedicated exercise behind them.
