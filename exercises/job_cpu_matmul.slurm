@@ -7,11 +7,4 @@
 #SBATCH --time=00:10:00
 #SBATCH --output=matmul_%j.log
 
-export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
-
-IMAGES_DIR=/p/project1/training2638/container-workshop/02_building
-SCRIPT_DIR=/p/project1/training2638/container-workshop/03_running_on_hpc
-
-apptainer exec \
-    "${IMAGES_DIR}/ml_gpu.sif" \
-    python "${SCRIPT_DIR}/matmul_cpu.py" --size 4000 --repeats 3
+apptainer exec ../02_building/conda.sif python3 matmul_cpu.py
