@@ -1,0 +1,638 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Containerizing HPC Workflows</title>
+<meta name="description" content="From namespaces and SIF images to Slurm jobs, GPUs, MPI and an LLM fine-tuning capstone: a write-up of the SciCoCo.nrw 2026 Apptainer workshop.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one 68ch reading column, sticky contents rail on the left at desktop width, numbered figures as full-column plates. */
+:root{
+  --bg:#F6F7F5; --surface:#FFFFFF; --fg:#1A2127; --muted:#5B6670; --line:#C9D0D4;
+  --accent:#0E6A86; --accent-soft:#E2F0F4; --warm:#B86B00; --warm-soft:#FBF0DE;
+  --code-bg:#EEF1F0; --note-bg:#EAF2F4;
+  --f-display:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161A; --surface:#182026; --fg:#E2E7EA; --muted:#97A3AC; --line:#33404A;
+  --accent:#5EC2DE; --accent-soft:#16323C; --warm:#EFA546; --warm-soft:#3A2A12;
+  --code-bg:#1A2329; --note-bg:#17282F; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161A; --surface:#182026; --fg:#E2E7EA; --muted:#97A3AC; --line:#33404A;
+  --accent:#5EC2DE; --accent-soft:#16323C; --warm:#EFA546; --warm-soft:#3A2A12;
+  --code-bg:#1A2329; --note-bg:#17282F; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:1.0625rem;line-height:1.65;padding-inline:20px;padding-block:0 64px}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:48px}
+@media (min-width:1000px){.wrap{grid-template-columns:220px minmax(0,1fr)}}
+
+/* Contents rail */
+.toc{display:none}
+@media (min-width:1000px){
+  .toc{display:block;position:sticky;top:calc(env(safe-area-inset-top,0px) + 32px);align-self:start;max-height:calc(100vh - 64px);overflow:auto;padding-top:120px;font-family:var(--f-display);font-size:.9rem}
+}
+.toc h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:600}
+.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;counter-reset:t}
+.toc li{counter-increment:t}
+.toc a{display:flex;gap:8px;padding:4px 8px;border-left:2px solid transparent;color:var(--muted);text-decoration:none;line-height:1.3}
+.toc a::before{content:counter(t);font-family:var(--f-mono);font-size:.75rem;min-width:1.2em;padding-top:1px}
+.toc a:hover{color:var(--fg)}
+.toc a.on{color:var(--fg);border-left-color:var(--accent)}
+
+article{min-width:0;max-width:44rem}
+header.post{padding-block:72px 28px;border-bottom:1px solid var(--line);margin-bottom:32px}
+.kicker{font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 14px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(2.1rem,5vw,3.2rem);line-height:1.05;margin:0 0 16px;text-wrap:balance;letter-spacing:-.01em}
+.dek{font-size:1.25rem;line-height:1.45;color:var(--muted);margin:0 0 22px;text-wrap:balance}
+.byline{display:flex;flex-wrap:wrap;gap:6px 18px;font-family:var(--f-display);font-size:.92rem;color:var(--muted)}
+.byline b{color:var(--fg);font-weight:600}
+
+h2{font-family:var(--f-display);font-weight:700;font-size:1.75rem;line-height:1.15;margin:64px 0 14px;text-wrap:balance;scroll-margin-top:24px}
+h2 .n{font-family:var(--f-mono);font-weight:500;font-size:1rem;color:var(--accent);margin-right:10px;vertical-align:.2em}
+h3{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:36px 0 8px;text-wrap:balance}
+p{margin:0 0 16px}
+ul,ol{margin:0 0 16px;padding-left:1.4em}
+li{margin-bottom:6px}
+strong{font-weight:600}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+pre{font-family:var(--f-mono);font-size:.85rem;line-height:1.6;background:var(--code-bg);border:1px solid var(--line);border-radius:4px;padding:14px 16px;margin:0 0 20px;overflow-x:auto}
+pre code{background:none;padding:0;font-size:inherit}
+pre .c{color:var(--muted)}
+pre .k{color:var(--accent)}
+.codehead{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--f-mono);font-size:.75rem;color:var(--muted);margin:0 0 -1px;padding:5px 12px;border:1px solid var(--line);border-bottom:none;border-radius:4px 4px 0 0;background:var(--surface)}
+.codehead + pre{border-radius:0 0 4px 4px}
+
+.note{background:var(--note-bg);border-left:3px solid var(--accent);padding:12px 16px;margin:0 0 20px;font-size:.98rem}
+.note.warn{background:var(--warm-soft);border-left-color:var(--warm)}
+.note .lbl{display:block;font-family:var(--f-display);font-weight:600;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.note.warn .lbl{color:var(--warm)}
+.note p:last-child,.note ul:last-child{margin-bottom:0}
+
+figure{margin:28px 0 32px}
+.plate{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:18px;overflow-x:auto}
+.plate svg{display:block;width:100%;min-width:560px;height:auto}
+figcaption{font-family:var(--f-display);font-size:.9rem;color:var(--muted);margin-top:10px;line-height:1.4}
+figcaption b{color:var(--fg);font-weight:600;margin-right:6px}
+
+/* SVG vocabulary */
+.bx{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.bxa{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.bxw{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1.5}
+.bxd{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:5 4}
+.ln{stroke:var(--fg);stroke-width:1.6;fill:none}
+.lnd{stroke:var(--warm);stroke-width:1.6;fill:none;stroke-dasharray:6 4}
+.ah{fill:var(--fg)}
+.ahw{fill:var(--warm)}
+.t{fill:var(--fg);font-family:var(--f-display);font-size:14px;font-weight:600}
+.tm{fill:var(--fg);font-family:var(--f-mono);font-size:12.5px}
+.ts{fill:var(--muted);font-family:var(--f-display);font-size:12.5px}
+.ta{fill:var(--accent);font-family:var(--f-display);font-size:13px;font-weight:600}
+.tw{fill:var(--warm);font-family:var(--f-display);font-size:13px;font-weight:600}
+
+.tablewrap{overflow-x:auto;margin:0 0 24px}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-display);font-weight:600;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom-width:2px}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.parts{counter-reset:p;list-style:none;padding:0;display:grid;gap:8px}
+.parts li{counter-increment:p;display:grid;grid-template-columns:2.2em minmax(0,1fr);gap:6px;margin:0}
+.parts li::before{content:counter(p);font-family:var(--f-mono);color:var(--accent);padding-top:1px}
+.parts a{font-family:var(--f-display);font-weight:600}
+
+.refs{font-size:.92rem;padding-left:1.6em}
+.refs li{margin-bottom:8px;word-break:break-word}
+footer.end{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);font-family:var(--f-display);font-size:.9rem;color:var(--muted)}
+
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <h2>Contents</h2>
+  <ol id="toc">
+    <li><a href="#why">Why containers on HPC</a></li>
+    <li><a href="#fundamentals">What a container is</a></li>
+    <li><a href="#interacting">Pull, shell, exec, run</a></li>
+    <li><a href="#building">Building images</a></li>
+    <li><a href="#slurm">Running under Slurm</a></li>
+    <li><a href="#gpu">GPUs and NGC</a></li>
+    <li><a href="#advanced">MPI and I/O</a></li>
+    <li><a href="#capstone">Capstone: an LLM job</a></li>
+    <li><a href="#lessons">What broke on the cluster</a></li>
+    <li><a href="#epilogue">Epilogue</a></li>
+  </ol>
+</nav>
+
+<article>
+<header class="post">
+  <p class="kicker">Workshop write-up · SciCoCo.nrw 2026</p>
+  <h1>Containerizing HPC Workflows</h1>
+  <p class="dek">From namespaces and single-file SIF images to Slurm jobs, GPUs, MPI and an LLM fine-tuning job on a real supercomputer.</p>
+  <div class="byline"><span><b>Junaid Mir</b> · AI HPC Advisor, University of Duisburg-Essen &amp; HPC.NRW</span><span>October 6, 2026</span></div>
+</header>
+
+<p>On 22 September 2026 I ran a three-hour, hands-on workshop on containers for HPC at SciCoCo.nrw in Aachen. The room was mostly HPC admins and consultants from NRW universities and the Jülich Supercomputing Centre, plus researchers and PhD students who wanted their software to run the same way on their laptop and on the cluster.</p>
+<p>This post is the long-form version of that workshop. It starts broad and adds detail as it goes, so you can form a correct mental model of the whole workflow before we get to the parts that fail in practice. Every command here was run on JURECA while preparing the session, and every exercise file is in the <a href="https://github.com/mirjunaid26/hpc_containers">workshop repository</a>.</p>
+
+<p>The post follows the two 90-minute sessions of the workshop:</p>
+<ol class="parts">
+  <li><span><a href="#why">Why containers</a> and <a href="#fundamentals">what a container really is</a>: kernels, namespaces, and the SIF image format.</span></li>
+  <li><span><a href="#interacting">Interacting with</a> and <a href="#building">building</a> images: definition files, fakeroot, sandboxes, tests, signing.</span></li>
+  <li><span><a href="#slurm">Running on the cluster</a>: batch scripts, bind paths, and filesystems.</span></li>
+  <li><span><a href="#gpu">GPUs and NVIDIA NGC</a>, then <a href="#advanced">MPI and I/O</a>.</span></li>
+  <li><span>A <a href="#capstone">capstone LLM job</a>, and <a href="#lessons">everything that broke</a> on the way.</span></li>
+</ol>
+
+<div class="note"><span class="lbl">Notes</span>
+<ul>
+<li>Commands target Apptainer 1.x. SingularityCE accepts almost all of them with <code>singularity</code> in place of <code>apptainer</code>.</li>
+<li>Paths like <code>$PROJECT_training2638</code> are from the JURECA training project. Replace them with your own project or scratch path.</li>
+<li>Audience: anyone who has used a Linux shell and Slurm a little, and wants their software stack to travel with them.</li>
+</ul>
+</div>
+
+<!-- 1 -->
+<h2 id="why"><span class="n">1</span>Why containers on HPC</h2>
+<p>Scientific software has deep dependency trees: compilers, MPI, CUDA, math libraries, and a Python or R stack on top. The versions on your workstation, on the test cluster and on the production system drift apart, and "it works on my machine" becomes a week of rebuilding. Journals and funders increasingly ask for pipelines others can rerun, which turns this into a requirement.</p>
+<p>A container packages your application together with its root filesystem and environment, so the whole stack moves as one unit. Unlike a virtual machine, it does not bring its own kernel. It runs as an ordinary process on the host kernel, which is why it starts in milliseconds and runs at near-native speed.</p>
+
+<figure>
+<div class="plate">
+<svg viewBox="0 0 700 300" role="img" aria-labelledby="f1t">
+<title id="f1t">Virtual machines stack a guest OS per application on a hypervisor; containers share the host kernel directly.</title>
+<text class="ta" x="20" y="22">Virtual machines</text>
+<rect class="bx" x="20" y="240" width="300" height="34" rx="3"/><text class="t" x="170" y="262" text-anchor="middle">Hardware</text>
+<rect class="bx" x="20" y="200" width="300" height="34" rx="3"/><text class="t" x="170" y="222" text-anchor="middle">Host OS + kernel</text>
+<rect class="bxw" x="20" y="160" width="300" height="34" rx="3"/><text class="t" x="170" y="182" text-anchor="middle">Hypervisor</text>
+<rect class="bx" x="20" y="40" width="145" height="114" rx="3"/>
+<rect class="bxw" x="30" y="112" width="125" height="32" rx="3"/><text class="tm" x="92" y="133" text-anchor="middle">guest kernel</text>
+<text class="tm" x="92" y="74" text-anchor="middle">app A</text><text class="tm" x="92" y="94" text-anchor="middle">libs A</text>
+<rect class="bx" x="175" y="40" width="145" height="114" rx="3"/>
+<rect class="bxw" x="185" y="112" width="125" height="32" rx="3"/><text class="tm" x="247" y="133" text-anchor="middle">guest kernel</text>
+<text class="tm" x="247" y="74" text-anchor="middle">app B</text><text class="tm" x="247" y="94" text-anchor="middle">libs B</text>
+
+<text class="ta" x="380" y="22">Containers</text>
+<rect class="bx" x="380" y="240" width="300" height="34" rx="3"/><text class="t" x="530" y="262" text-anchor="middle">Hardware</text>
+<rect class="bxa" x="380" y="200" width="300" height="34" rx="3"/><text class="t" x="530" y="222" text-anchor="middle">Host OS + one shared kernel</text>
+<rect class="bx" x="380" y="110" width="94" height="84" rx="3"/><text class="tm" x="427" y="145" text-anchor="middle">app A</text><text class="tm" x="427" y="165" text-anchor="middle">libs A</text>
+<rect class="bx" x="483" y="110" width="94" height="84" rx="3"/><text class="tm" x="530" y="145" text-anchor="middle">app B</text><text class="tm" x="530" y="165" text-anchor="middle">libs B</text>
+<rect class="bx" x="586" y="110" width="94" height="84" rx="3"/><text class="tm" x="633" y="145" text-anchor="middle">app C</text><text class="tm" x="633" y="165" text-anchor="middle">libs C</text>
+<text class="ts" x="530" y="70" text-anchor="middle">no hypervisor, no guest kernels:</text>
+<text class="ts" x="530" y="88" text-anchor="middle">milliseconds to start, near-native speed</text>
+</svg>
+</div>
+<figcaption><b>Figure 1</b>Each VM carries its own kernel on top of a hypervisor. Containers are processes on the host kernel, so you can pack many more of them per node.</figcaption>
+</figure>
+
+<h3>Why not just Docker?</h3>
+<p>Docker made Linux containers usable for everyone, but its classic design runs a root-owned daemon, <code>dockerd</code>. Anyone who can talk to that daemon effectively has root on the host, which no shared cluster can accept. Rootless Docker exists but is not yet a complete replacement, and Docker was never designed around multi-user batch schedulers.</p>
+<p>That gap is why Singularity was created for scientific computing. In 2021 the project split: <strong>Apptainer</strong> joined the Linux Foundation, and <strong>SingularityCE</strong> continues under Sylabs. Both are actively developed, and the command line and image format remain nearly identical. Apptainer is now the default container runtime at most HPC centres, including many in Germany.</p>
+<p>It is not the only option. Podman (with podman-hpc), Charliecloud, Sarus, Shifter and Enroot/Pyxis all run on production systems. The real dividing line is between a root daemon and daemonless, rootless runtimes, and Apptainer is one answer to that problem.</p>
+
+<!-- 2 -->
+<h2 id="fundamentals"><span class="n">2</span>What a container really is</h2>
+<p>A container is a regular Linux process with a restricted view of the system. Two kernel features do the work:</p>
+<ul>
+<li><strong>Namespaces</strong> limit what a process can <em>see</em>: its own mount table, process IDs, hostname, users, and so on.</li>
+<li><strong>Cgroups</strong> limit what a process can <em>use</em>: CPU, memory, I/O.</li>
+</ul>
+<p>There is no hypervisor and no second kernel. That is why containers are fast, and also why portability has a limit: an image built for x86 will not run on an ARM node, because the CPU and kernel still belong to the host.</p>
+
+<h3>Images and containers</h3>
+<p>An <strong>image</strong> is a static filesystem snapshot, the blueprint. A <strong>container</strong> is a running instance of it. Docker stores images as a stack of layers managed by its daemon. Apptainer stores an image as a single file in the <strong>Singularity Image Format (SIF)</strong>: a compressed, read-only SquashFS filesystem plus metadata, an optional embedded definition file and optional cryptographic signatures.</p>
+<p>A single file matters more on HPC than it first appears. You can <code>scp</code> it between clusters without a registry, keep it next to your data on a parallel filesystem, and checksum it like any other artifact.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th></th><th>Docker</th><th>Apptainer</th></tr></thead>
+<tbody>
+<tr><td>Daemon</td><td>Yes, root-owned</td><td>None</td></tr>
+<tr><td>Runs as</td><td>root by default</td><td>your own user (same UID/GID inside and out)</td></tr>
+<tr><td>Image format</td><td>OCI layers</td><td>single SIF file</td></tr>
+<tr><td>Isolation default</td><td>strong, separate network and filesystem</td><td>minimal: home, GPUs and interconnect stay reachable</td></tr>
+<tr><td>Typical home</td><td>cloud, CI, microservices</td><td>HPC batch jobs</td></tr>
+</tbody></table></div>
+
+<p>The last row is the design philosophy in one line. Apptainer prefers <em>integration over isolation</em>: inside the container you are still yourself, your home directory is there, and the GPUs and high-speed network are usable. That is exactly what an HPC job needs and exactly what a web service usually does not.</p>
+
+<!-- 3 -->
+<h2 id="interacting"><span class="n">3</span>Pull, shell, exec, run</h2>
+
+<div class="note warn"><span class="lbl">Before your first pull</span>
+<p>Apptainer caches image layers in <code>~/.apptainer</code> and builds in <code>/tmp</code>. On many clusters home quotas are small (5 GB on our training project), and a single PyTorch image fills that. Point both at project or scratch storage first:</p>
+</div>
+<pre><code>export WORK=$PROJECT_training2638/container-workshop/$USER
+mkdir -p $WORK/apptainer_cache $WORK/apptainer_tmp
+export APPTAINER_CACHEDIR=$WORK/apptainer_cache
+export APPTAINER_TMPDIR=$WORK/apptainer_tmp   <span class="c"># must exist before you build</span></code></pre>
+<p>Add the export lines to <code>~/.bashrc</code>, or they are gone in your next terminal.</p>
+
+<h3>Getting an image</h3>
+<pre><code>apptainer pull docker://ubuntu:22.04          <span class="c"># → ubuntu_22.04.sif</span></code></pre>
+<p>Apptainer downloads the OCI layers from Docker Hub and converts them into a single SIF. This works for almost any public Docker image, which means the entire Docker ecosystem is available to you without Docker.</p>
+
+<h3>Three verbs</h3>
+<pre><code>apptainer shell ubuntu_22.04.sif                     <span class="c"># interactive prompt inside</span>
+apptainer exec  ubuntu_22.04.sif cat /etc/os-release <span class="c"># one command, then back</span>
+apptainer run   ubuntu_22.04.sif                     <span class="c"># the image's %runscript</span></code></pre>
+<p>A quick test that reveals the security model: <code>apptainer exec ubuntu_22.04.sif whoami</code> prints your username, not <code>root</code>. The image's filesystem is read-only by default, so you can't change files inside it unless you use a writable sandbox or <code>--fakeroot</code> during a build.</p>
+
+<h3>Bind mounts</h3>
+<p>Your data should stay on the cluster's filesystems, not inside the image. A bind mount maps a host directory into the container. Apptainer binds <code>$HOME</code>, <code>/tmp</code> and the current directory by default (sites can configure more), and you add others with <code>--bind host:container</code>.</p>
+
+<figure>
+<div class="plate">
+<svg viewBox="0 0 700 260" role="img" aria-labelledby="f2t">
+<title id="f2t">Host directories are mapped into the container; the rest of the container filesystem comes from the read-only image.</title>
+<defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text class="ta" x="20" y="24">Host filesystem</text>
+<rect class="bx" x="20" y="40" width="250" height="40" rx="3"/><text class="tm" x="34" y="65">/home/you</text>
+<rect class="bx" x="20" y="96" width="250" height="40" rx="3"/><text class="tm" x="34" y="121">/p/scratch/proj/you/data</text>
+<rect class="bx" x="20" y="152" width="250" height="40" rx="3"/><text class="tm" x="34" y="177">/p/project/proj/models</text>
+
+<text class="ta" x="430" y="24">Inside the container</text>
+<rect class="bxa" x="430" y="40" width="250" height="40" rx="3"/><text class="tm" x="444" y="65">/home/you</text><text class="ts" x="672" y="65" text-anchor="end">default</text>
+<rect class="bxa" x="430" y="96" width="250" height="40" rx="3"/><text class="tm" x="444" y="121">/data</text><text class="ts" x="672" y="121" text-anchor="end">--bind</text>
+<rect class="bxa" x="430" y="152" width="250" height="40" rx="3"/><text class="tm" x="444" y="177">/models</text><text class="ts" x="672" y="177" text-anchor="end">--bind</text>
+<rect class="bx" x="430" y="208" width="250" height="40" rx="3"/><text class="tm" x="444" y="233">/usr, /opt, /etc …</text><text class="ts" x="672" y="233" text-anchor="end">from .sif</text>
+
+<path class="ln" d="M272 60 H426" marker-end="url(#a2)"/>
+<path class="ln" d="M272 116 H426" marker-end="url(#a2)"/>
+<path class="ln" d="M272 172 H426" marker-end="url(#a2)"/>
+<text class="tm" x="20" y="232">--bind /p/scratch/proj/you/data:/data</text>
+</svg>
+</div>
+<figcaption><b>Figure 2</b>Host path first, container path second. Software comes from the image; data stays on the HPC filesystem.</figcaption>
+</figure>
+
+<div class="note warn"><span class="lbl">Gotcha</span>
+<p>If the destination path doesn't exist inside the container, Apptainer creates the mount point silently. A typo in the container path doesn't fail; your program just looks in the wrong place.</p>
+</div>
+
+<!-- 4 -->
+<h2 id="building"><span class="n">4</span>Building your own images</h2>
+<p>Pulling covers a lot, but sooner or later you need your own stack. In Apptainer, a <strong>definition file</strong> is the recipe and the SIF is the reproducible artifact. Here is the first one participants built:</p>
+
+<div class="codehead"><span>exercises/01_hello.def</span><span>Exercise 2</span></div>
+<pre><code><span class="k">Bootstrap:</span> docker
+<span class="k">From:</span> ubuntu:22.04
+
+<span class="k">%post</span>
+    apt-get update &amp;&amp; apt-get install -y bash
+
+<span class="k">%environment</span>
+    export GREETING="Hello from Apptainer!"
+
+<span class="k">%runscript</span>
+    echo $GREETING
+    exec "$@"
+
+<span class="k">%labels</span>
+    Author  Student
+    Version v1.0</code></pre>
+
+<ul>
+<li><code>Bootstrap/From</code>: where the base image comes from (<code>docker</code>, <code>library</code>, <code>localimage</code>, <code>debootstrap</code> …).</li>
+<li><code>%post</code>: runs once at build time; installs and compiles go here.</li>
+<li><code>%environment</code>: set every time the container runs.</li>
+<li><code>%runscript</code>: what <code>apptainer run</code> does.</li>
+<li><code>%labels</code>: metadata you can read back later with <code>inspect</code>.</li>
+</ul>
+<p>Further sections exist for more complex images: <code>%files</code> copies files in from the host, <code>%test</code> holds a self-check run by <code>apptainer test</code>, <code>%startscript</code> runs when you start an instance, and <code>%help</code> feeds <code>apptainer run-help</code>.</p>
+
+<h3>Fakeroot: root inside, you outside</h3>
+<p>Installing packages in <code>%post</code> needs root inside the build. You don't have root on the cluster, and you shouldn't. <code>--fakeroot</code> uses a user namespace to map your user to root inside the container only:</p>
+<pre><code>apptainer build --fakeroot hello.sif exercises/01_hello.def
+apptainer run hello.sif                 <span class="c"># Hello from Apptainer!</span></code></pre>
+
+<h3>Iterate in a sandbox, freeze into a SIF</h3>
+<p>Rebuilding from scratch for every small change is slow. A <strong>sandbox</strong> is a writable directory-based container: build it once, shell in, install and test, then freeze it.</p>
+
+<figure>
+<div class="plate">
+<svg viewBox="0 0 700 250" role="img" aria-labelledby="f3t">
+<title id="f3t">Two build paths: definition file to SIF directly, or a sandbox loop that is frozen into a SIF.</title>
+<defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text class="ta" x="20" y="24">Reproducible path</text>
+<rect class="bx" x="20" y="40" width="150" height="54" rx="3"/><text class="tm" x="95" y="64" text-anchor="middle">app.def</text><text class="ts" x="95" y="82" text-anchor="middle">the recipe</text>
+<path class="ln" d="M172 67 H372" marker-end="url(#a3)"/>
+<text class="tm" x="272" y="58" text-anchor="middle">build --fakeroot</text>
+<rect class="bxa" x="376" y="40" width="150" height="54" rx="3"/><text class="tm" x="451" y="64" text-anchor="middle">app.sif</text><text class="ts" x="451" y="82" text-anchor="middle">immutable, signable</text>
+<path class="ln" d="M528 67 H600" marker-end="url(#a3)"/>
+<text class="t" x="610" y="64">test</text><text class="ts" x="610" y="82">%test</text>
+
+<text class="ta" x="20" y="140">Development loop</text>
+<rect class="bx" x="20" y="156" width="150" height="54" rx="3"/><text class="tm" x="95" y="180" text-anchor="middle">docker://…</text><text class="ts" x="95" y="198" text-anchor="middle">or hello.sif</text>
+<path class="ln" d="M172 183 H232" marker-end="url(#a3)"/>
+<text class="tm" x="202" y="174" text-anchor="middle">--sandbox</text>
+<rect class="bxw" x="236" y="156" width="150" height="54" rx="3"/><text class="tm" x="311" y="180" text-anchor="middle">sandbox/</text><text class="ts" x="311" y="198" text-anchor="middle">writable directory</text>
+<path class="lnd" d="M286 154 C 286 118, 336 118, 336 150" marker-end="url(#a3)"/>
+<text class="tw" x="311" y="114" text-anchor="middle">shell --fakeroot --writable</text>
+<path class="ln" d="M388 183 H468" marker-end="url(#a3)"/>
+<text class="tm" x="428" y="174" text-anchor="middle">build</text>
+<rect class="bxa" x="472" y="156" width="150" height="54" rx="3"/><text class="tm" x="547" y="180" text-anchor="middle">final.sif</text><text class="ts" x="547" y="198" text-anchor="middle">frozen result</text>
+<text class="ts" x="20" y="238">Copy what worked back into app.def: the definition file stays the source of truth.</text>
+</svg>
+</div>
+<figcaption><b>Figure 3</b>Use the sandbox to experiment quickly; use the definition file to make the result reproducible.</figcaption>
+</figure>
+
+<pre><code>apptainer build --sandbox sandbox/ docker://ubuntu:22.04
+apptainer shell --fakeroot --writable sandbox/   <span class="c"># apt install, edit, test …</span>
+apptainer build final.sif sandbox/</code></pre>
+
+<h3>Test, inspect, sign</h3>
+<p>Three habits turn an image into something you can trust and hand to a colleague:</p>
+<pre><code>apptainer test conda.sif              <span class="c"># runs the %test block</span>
+apptainer inspect --deffile conda.sif <span class="c"># recover the embedded recipe</span>
+apptainer key newpair                 <span class="c"># once</span>
+apptainer sign conda.sif
+apptainer verify conda.sif            <span class="c"># warns if the file changed since signing</span></code></pre>
+<p>Signatures live inside the SIF itself, so no keyserver is needed. On shared storage, where anyone with write access could replace a file, verification is cheap insurance.</p>
+
+<h3>Coming from Docker</h3>
+<p>Dockerfile keywords map almost one-to-one: <code>FROM</code> → <code>Bootstrap/From</code>, <code>RUN</code> → <code>%post</code>, <code>ENV</code> → <code>%environment</code>, <code>COPY</code> → <code>%files</code>, <code>ENTRYPOINT</code> → <code>%runscript</code>. Often you don't need to translate at all: build the Docker image as usual, push it to a registry, and point <code>From:</code> at it.</p>
+
+<!-- 5 -->
+<h2 id="slurm"><span class="n">5</span>Running under Slurm</h2>
+<p>The division of labour is simple: <strong>Slurm handles resources, Apptainer handles the environment.</strong> Slurm allocates nodes, CPUs, memory and GPUs. Inside that allocation, <code>apptainer exec</code> starts your software stack as you, with your normal file permissions. There is no daemon to coordinate with, so it runs fine under the scheduler's user context.</p>
+
+<figure>
+<div class="plate">
+<svg viewBox="0 0 700 300" role="img" aria-labelledby="f4t">
+<title id="f4t">A job script submitted from the login node runs apptainer exec on compute nodes; the SIF and data sit on shared storage.</title>
+<defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bx" x="20" y="40" width="170" height="90" rx="3"/>
+<text class="t" x="105" y="66" text-anchor="middle">Login node</text>
+<text class="tm" x="105" y="92" text-anchor="middle">sbatch job.slurm</text>
+<text class="ts" x="105" y="114" text-anchor="middle">build, pull, submit</text>
+<path class="ln" d="M192 85 H262" marker-end="url(#a4)"/>
+<rect class="bxw" x="266" y="55" width="120" height="60" rx="3"/>
+<text class="t" x="326" y="81" text-anchor="middle">Slurm</text>
+<text class="ts" x="326" y="100" text-anchor="middle">queue + allocate</text>
+<path class="ln" d="M388 74 L462 50" marker-end="url(#a4)"/>
+<path class="ln" d="M388 85 H462" marker-end="url(#a4)"/>
+<path class="ln" d="M388 96 L462 120" marker-end="url(#a4)"/>
+<rect class="bxa" x="466" y="24" width="214" height="44" rx="3"/><text class="tm" x="478" y="51">node 1 · apptainer exec</text>
+<rect class="bxa" x="466" y="74" width="214" height="44" rx="3"/><text class="tm" x="478" y="101">node 2 · apptainer exec</text>
+<rect class="bxa" x="466" y="124" width="214" height="44" rx="3"/><text class="tm" x="478" y="151">node N · apptainer exec</text>
+
+<rect class="bx" x="20" y="214" width="660" height="62" rx="3"/>
+<text class="t" x="36" y="238">Shared parallel filesystem</text>
+<text class="tm" x="36" y="260">$HOME: scripts · $PROJECT: app.sif · $SCRATCH: datasets and outputs</text>
+<path class="ln" d="M105 132 V210" marker-end="url(#a4)"/>
+<path class="ln" d="M573 170 V210" marker-end="url(#a4)"/>
+<text class="ts" x="583" y="196">read app.sif, bind data</text>
+</svg>
+</div>
+<figcaption><b>Figure 4</b>Build or pull the image once on the login node, store it on shared storage, and let every compute node read the same file.</figcaption>
+</figure>
+
+<div class="codehead"><span>job.slurm</span><span>Exercise 5</span></div>
+<pre><code>#!/bin/bash
+#SBATCH --job-name=container-job
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=00:30:00
+#SBATCH --output=job_%j.log
+
+module load apptainer          <span class="c"># if your site provides it as a module</span>
+apptainer exec --bind $SCRATCH/data:/data mytool.sif \
+    python3 /data/analysis.py</code></pre>
+
+<p>On a single node, the script body runs once on the allocated node. For several tasks or nodes, prefix the command with <code>srun</code>, which starts one container per task across the allocation.</p>
+
+<div class="note"><span class="lbl">Rules of thumb</span>
+<ul>
+<li>Bind the filesystem your data actually lives on. Don't assume it is mounted.</li>
+<li>Match <code>--cpus-per-task</code> to the threads your program starts inside the container.</li>
+<li>Pull once, not per node. If 64 nodes each pull from Docker Hub at job start, you create your own network bottleneck and may hit registry rate limits.</li>
+</ul>
+</div>
+
+<!-- 6 -->
+<h2 id="gpu"><span class="n">6</span>GPUs and NVIDIA NGC</h2>
+<p>A GPU container needs two halves that live in different places. The <strong>CUDA toolkit and libraries</strong> (cuDNN, NCCL, PyTorch) ship inside the image. The <strong>driver</strong> belongs to the host, because it must match the host kernel. The <code>--nv</code> flag bridges the two: it binds the host's driver libraries and <code>/dev/nvidia*</code> devices into the container at run time.</p>
+
+<figure>
+<div class="plate">
+<svg viewBox="0 0 700 270" role="img" aria-labelledby="f5t">
+<title id="f5t">The --nv flag injects the host NVIDIA driver and GPU devices into a container that carries its own CUDA toolkit.</title>
+<defs><marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ahw" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bxa" x="20" y="24" width="380" height="120" rx="3"/>
+<text class="t" x="36" y="48">pytorch_24.01-py3.sif</text>
+<rect class="bx" x="36" y="62" width="110" height="32" rx="3"/><text class="tm" x="91" y="83" text-anchor="middle">PyTorch</text>
+<rect class="bx" x="154" y="62" width="110" height="32" rx="3"/><text class="tm" x="209" y="83" text-anchor="middle">cuDNN, NCCL</text>
+<rect class="bx" x="272" y="62" width="112" height="32" rx="3"/><text class="tm" x="328" y="83" text-anchor="middle">CUDA toolkit</text>
+<rect class="bxd" x="36" y="102" width="348" height="30" rx="3"/><text class="tw" x="210" y="122" text-anchor="middle">libcuda.so · /dev/nvidia* (injected)</text>
+
+<rect class="bxw" x="20" y="176" width="380" height="36" rx="3"/><text class="t" x="210" y="199" text-anchor="middle">Host NVIDIA driver (matches host kernel)</text>
+<rect class="bx" x="20" y="222" width="380" height="36" rx="3"/><text class="t" x="210" y="245" text-anchor="middle">GPU</text>
+<path class="lnd" d="M210 174 V138" marker-end="url(#a5)"/>
+<text class="tw" x="222" y="162">apptainer exec --nv</text>
+
+<text class="t" x="440" y="48">The one rule</text>
+<text class="ts" x="440" y="74">The host driver must be new enough</text>
+<text class="ts" x="440" y="92">for the CUDA version inside the image.</text>
+<text class="ts" x="440" y="126">A mismatch fails at run time,</text>
+<text class="ts" x="440" y="144">not at pull or build time.</text>
+<text class="ts" x="440" y="178">Check on the node:</text>
+<text class="tm" x="440" y="198">nvidia-smi</text>
+<text class="ts" x="440" y="232">AMD GPUs: --rocm</text>
+</svg>
+</div>
+<figcaption><b>Figure 5</b>The toolkit travels with the image; the driver stays on the host. <code>--nv</code> connects them.</figcaption>
+</figure>
+
+<p>Getting CUDA, cuDNN and NCCL versions to agree by hand is a common way to lose a week. NVIDIA's <a href="https://catalog.ngc.nvidia.com">NGC catalog</a> publishes GPU-optimised, tested images for PyTorch, TensorFlow and HPC applications such as GROMACS and NAMD. Most of the AI and CUDA base images can be pulled without an account; if a pull returns <code>unauthorized</code>, that image needs an NGC API key.</p>
+
+<div class="codehead"><span>shell</span><span>Exercise 6</span></div>
+<pre><code>apptainer pull docker://nvcr.io/nvidia/pytorch:24.01-py3
+apptainer exec --nv pytorch_24.01-py3.sif \
+    python3 -c "import torch; print(torch.cuda.is_available())"   <span class="c"># True</span></code></pre>
+<p>In Exercise 7, participants built <code>exercises/04_ml_gpu.def</code> on top of such a base, adding scikit-learn and a <code>%test</code> block that checks the imports.</p>
+
+<!-- 7 -->
+<h2 id="advanced"><span class="n">7</span>MPI and I/O-heavy workflows</h2>
+<h3>MPI: the hybrid model</h3>
+<p>The most common way to run containerised MPI codes is the <strong>hybrid model</strong>. The launcher (<code>srun</code> or <code>mpirun</code>) runs on the host, outside any container, and starts one <code>apptainer exec</code> per rank. Each rank runs its own container instance, and the MPI library inside the image talks to the host's MPI and interconnect stack.</p>
+
+<figure>
+<div class="plate">
+<svg viewBox="0 0 700 230" role="img" aria-labelledby="f6t">
+<title id="f6t">srun on the host starts one container per MPI rank across nodes; the container MPI must be ABI-compatible with the host MPI.</title>
+<defs><marker id="a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bxw" x="250" y="16" width="200" height="40" rx="3"/><text class="tm" x="350" y="41" text-anchor="middle">srun (on the host)</text>
+<path class="ln" d="M300 58 L125 96" marker-end="url(#a6)"/>
+<path class="ln" d="M330 58 L285 96" marker-end="url(#a6)"/>
+<path class="ln" d="M370 58 L415 96" marker-end="url(#a6)"/>
+<path class="ln" d="M400 58 L575 96" marker-end="url(#a6)"/>
+<rect class="bx" x="20" y="98" width="320" height="76" rx="3"/><text class="ts" x="30" y="114">node 1</text>
+<rect class="bxa" x="40" y="122" width="130" height="40" rx="3"/><text class="tm" x="105" y="147" text-anchor="middle">rank 0 · .sif</text>
+<rect class="bxa" x="190" y="122" width="130" height="40" rx="3"/><text class="tm" x="255" y="147" text-anchor="middle">rank 1 · .sif</text>
+<rect class="bx" x="360" y="98" width="320" height="76" rx="3"/><text class="ts" x="370" y="114">node 2</text>
+<rect class="bxa" x="380" y="122" width="130" height="40" rx="3"/><text class="tm" x="445" y="147" text-anchor="middle">rank 2 · .sif</text>
+<rect class="bxa" x="530" y="122" width="130" height="40" rx="3"/><text class="tm" x="595" y="147" text-anchor="middle">rank 3 · .sif</text>
+<rect class="bx" x="20" y="186" width="660" height="34" rx="3"/><text class="t" x="350" y="208" text-anchor="middle">Host MPI + high-speed interconnect: must be ABI-compatible with the MPI in the image</text>
+</svg>
+</div>
+<figcaption><b>Figure 6</b>One container per rank. Mismatched MPI versions between image and host are the most common reason containerised MPI jobs fail.</figcaption>
+</figure>
+<pre><code>srun apptainer exec mpi_app.sif ./my_mpi_program</code></pre>
+<p>The alternative is the <strong>bind model</strong>: the host's MPI installation is bind-mounted into the container at run time, so the image carries no MPI of its own. Some sites do this by default for full interconnect speed. It usually works, but ABI mismatches are confusing to debug. The <a href="https://charliecloud.io/latest/best_practices.html#mpi">Charliecloud best-practices guide</a> covers both approaches in depth.</p>
+
+<h3>I/O</h3>
+<ul>
+<li>Avoid millions of small-file operations on the parallel filesystem. Pack datasets into larger files, or stage them to node-local NVMe or <code>/tmp</code> at job start.</li>
+<li>Large read-only reference data (genomes, model weights) can be shipped as a SquashFS overlay instead of millions of files.</li>
+<li><code>--overlay</code> adds a writable layer on top of an image without rebuilding it.</li>
+</ul>
+
+<!-- 8 -->
+<h2 id="capstone"><span class="n">8</span>Capstone: an LLM fine-tuning job</h2>
+<p>The last exercise put everything together: an NGC base image, a definition file, GPU access, bind paths and Slurm. The recipe starts from NVIDIA's PyTorch image and adds the Hugging Face fine-tuning libraries:</p>
+
+<div class="codehead"><span>exercises/05_llm.def</span><span>Exercise 8</span></div>
+<pre><code><span class="k">Bootstrap:</span> docker
+<span class="k">From:</span> nvcr.io/nvidia/pytorch:23.08-py3   <span class="c"># CUDA, cuDNN, PyTorch from NGC</span>
+
+<span class="k">%post</span>
+    apt-get update &amp;&amp; apt-get install -y git
+    pip install transformers datasets accelerate peft   <span class="c"># pin these, see section 9</span>
+
+<span class="k">%test</span>
+    python -c "import transformers; print(transformers.__version__)"</code></pre>
+
+<h3>The Hugging Face cache</h3>
+<p>Models download to <code>~/.cache/huggingface</code> by default, and on a 5 GB home quota a single 7B model fails the job. The fix is the same pattern as any other bind path: put the cache on scratch.</p>
+<pre><code>mkdir -p $SCRATCH/hf_cache
+apptainer exec --nv \
+    --env HF_HOME=/hf_cache \
+    --bind $SCRATCH/hf_cache:/hf_cache \
+    llm.sif python exercises/llm_training_script.py</code></pre>
+
+<h3>Compute nodes are offline</h3>
+<p>This was the surprise during preparation. On JURECA, as on many supercomputers, compute nodes have no internet access. A job that calls <code>from_pretrained("…")</code> doesn't fail fast; it hangs while trying to reach the Hub until the job times out.</p>
+
+<figure>
+<div class="plate">
+<svg viewBox="0 0 700 200" role="img" aria-labelledby="f7t">
+<title id="f7t">Prefetch models on the internet-connected login node into a shared cache; offline compute nodes read from it.</title>
+<defs><marker id="a7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bx" x="20" y="40" width="190" height="96" rx="3"/>
+<text class="t" x="115" y="64" text-anchor="middle">Login node</text>
+<text class="ts" x="115" y="84" text-anchor="middle">has internet</text>
+<text class="tm" x="115" y="112" text-anchor="middle">prefecth_model.sh</text>
+<path class="ln" d="M212 88 H272" marker-end="url(#a7)"/>
+<rect class="bxa" x="276" y="40" width="160" height="96" rx="3"/>
+<text class="t" x="356" y="64" text-anchor="middle">Shared cache</text>
+<text class="tm" x="356" y="94" text-anchor="middle">$SCRATCH/hf_cache</text>
+<text class="ts" x="356" y="114" text-anchor="middle">weights + tokenizer</text>
+<path class="ln" d="M438 88 H498" marker-end="url(#a7)"/>
+<rect class="bxw" x="502" y="40" width="178" height="96" rx="3"/>
+<text class="t" x="591" y="64" text-anchor="middle">GPU compute node</text>
+<text class="ts" x="591" y="84" text-anchor="middle">no internet</text>
+<text class="tm" x="591" y="112" text-anchor="middle">HF_HUB_OFFLINE=1</text>
+<text class="ts" x="20" y="176">Download where the network is, run where the GPUs are, and tell the library not to look online.</text>
+</svg>
+</div>
+<figcaption><b>Figure 7</b>The pattern behind <code>exercises/prefecth_model.sh</code> and <code>exercises/job_gpu_llm.slurm</code> in the workshop repository.</figcaption>
+</figure>
+
+<pre><code><span class="c"># on the login node, once</span>
+bash exercises/prefecth_model.sh
+
+<span class="c"># in exercises/job_gpu_llm.slurm</span>
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
+srun apptainer exec --nv --env HF_HOME=/hf_cache \
+     --bind $SCRATCH/hf_cache:/hf_cache llm.sif python run_llm.py</code></pre>
+<p>With the cache prefetched and offline mode set, the GPU inference job finished in 9.1 seconds. Its CPU counterpart, <code>exercises/job_cpu_matmul.slurm</code>, reached about 566 GFLOP/s on a single node from inside the container.</p>
+
+<!-- 9 -->
+<h2 id="lessons"><span class="n">9</span>What broke on the cluster</h2>
+<p>Every exercise worked on my workstation the first time. On JURECA, several did not. The failures fell into a few families, and they are more instructive than the happy path.</p>
+
+<h3>Fakeroot without a subuid mapping</h3>
+<p>Full <code>--fakeroot</code> needs an entry for your user in <code>/etc/subuid</code> and <code>/etc/subgid</code>, set up by the admins. Without it, Apptainer falls back to a more limited mode. Simple builds still work, but package managers that change file ownership during installation can fail with errors that look unrelated to fakeroot. The fix was to keep <code>%post</code> steps simple, prefer pip and conda installs that don't change file ownership, and ask whether the site supports remote or admin-provided builds for heavier images.</p>
+
+<h3>Unpinned dependencies drift</h3>
+<p>A definition file that says <code>pip install transformers</code> produces a different image every month. Between my first test and the dress rehearsal, unpinned packages resolved to newer releases that expected a newer glibc and CUDA than the base image provided. The image still built and failed only at run time. Pin everything in <code>%post</code>, and pin the base image tag too. <code>:latest</code> means "whatever was published last".</p>
+
+<h3>Offline compute nodes</h3>
+<p>Covered above: any library that downloads on first use (Hugging Face, torchvision weights, NLTK data) will hang on a compute node. Prefetch on the login node and set the offline flags.</p>
+
+<h3>Quota and temp space</h3>
+<p>The first pull of a PyTorch image filled the 5 GB home quota through the layer cache, and builds failed when the temp directory didn't exist. Setting <code>APPTAINER_CACHEDIR</code> and <code>APPTAINER_TMPDIR</code> before the first command, as in section 3, solved both.</p>
+
+<div class="note"><span class="lbl">Checklist</span>
+<ul>
+<li>Cache and temp directories on project or scratch storage.</li>
+<li>Base image tag and every package version pinned.</li>
+<li>A <code>%test</code> block that fails loudly.</li>
+<li>Models and datasets prefetched before the job, offline flags set.</li>
+<li>Data bound in, never baked in.</li>
+</ul>
+</div>
+
+<h3>The eight exercises</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Exercise</th><th>What it teaches</th></tr></thead>
+<tbody>
+<tr><td class="num">1</td><td>Pull an image and explore it</td><td><code>shell</code>, <code>exec</code>, the UID model</td></tr>
+<tr><td class="num">2</td><td>Build <code>01_hello.def</code></td><td>definition files, <code>--fakeroot</code></td></tr>
+<tr><td class="num">3</td><td>Build <code>02_conda.def</code></td><td>conda inside images, <code>%test</code></td></tr>
+<tr><td class="num">4</td><td>Build <code>03_complex.def</code></td><td>all sections, instances</td></tr>
+<tr><td class="num">5</td><td>Submit a containerised job</td><td>Slurm, bind paths</td></tr>
+<tr><td class="num">6</td><td>GPU check in an NGC image</td><td><code>--nv</code>, driver compatibility</td></tr>
+<tr><td class="num">7</td><td>Build <code>04_ml_gpu.def</code></td><td>extending NGC images</td></tr>
+<tr><td class="num">8</td><td>LLM capstone</td><td>caches, offline nodes, everything together</td></tr>
+</tbody></table></div>
+
+<!-- 10 -->
+<h2 id="epilogue"><span class="n">10</span>Epilogue</h2>
+<p>We started with a single process on a shared kernel, packed a software stack into one SIF file, built our own images without root, and ran them under Slurm on CPUs, GPUs and across MPI ranks. The capstone combined all of it into an LLM job on a supercomputer whose compute nodes can't reach the internet.</p>
+<p>Containers don't remove every portability problem. The CPU architecture, the host driver and the host MPI still matter, and an unpinned recipe isn't reproducible no matter how it is packaged. Within those limits, they move most of the "works on my machine" problem out of your way.</p>
+<p>I skipped GUI sessions, instances for long-running services and the OCI-native runtimes in detail. Those will get their own posts.</p>
+
+<div class="note"><span class="lbl">Get in touch</span>
+<p>Found an error, or want to run this workshop at your site? Open an issue on the <a href="https://github.com/mirjunaid26/hpc_containers">workshop repository</a> or contact me through HPC.NRW.</p>
+</div>
+
+<h3>Acknowledgements</h3>
+<p>Thanks to the SciCoCo.nrw organisers and the RWTH Aachen IT Center for hosting, to the Jülich Supercomputing Centre for JURECA access for the training project, and to everyone who joined and broke things with me.</p>
+
+<h3>References</h3>
+<ol class="refs">
+<li>Apptainer documentation, <a href="https://apptainer.org/docs/">apptainer.org/docs</a></li>
+<li>Kurtzer, Sochat, Bauer. "Singularity: Scientific containers for mobility of compute." PLoS ONE, 2017. <a href="https://doi.org/10.1371/journal.pone.0177459">doi:10.1371/journal.pone.0177459</a></li>
+<li>NVIDIA NGC catalog, <a href="https://catalog.ngc.nvidia.com">catalog.ngc.nvidia.com</a></li>
+<li>Charliecloud best practices: MPI, <a href="https://charliecloud.io/latest/best_practices.html#mpi">charliecloud.io</a></li>
+<li>Open Container Initiative specifications, <a href="https://opencontainers.org">opencontainers.org</a></li>
+<li>Workshop materials, <a href="https://github.com/mirjunaid26/hpc_containers">github.com/mirjunaid26/hpc_containers</a></li>
+<li>Workshop listing, <a href="https://events.hifis.net/event/3911/contributions/24769/">SciCoCo.nrw 2026 on events.hifis.net</a></li>
+</ol>
+
+<footer class="end">Junaid Mir · AI HPC Advisor, University of Duisburg-Essen &amp; HPC.NRW</footer>
+</article>
+</div>
+
+<script>
+(function(){
+  var links=[].slice.call(document.querySelectorAll('#toc a'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'))});
+  function spy(){
+    var y=window.scrollY+120, cur=0;
+    secs.forEach(function(s,i){ if(s && s.offsetTop<=y) cur=i; });
+    links.forEach(function(a,i){ a.classList.toggle('on', i===cur); });
+  }
+  window.addEventListener('scroll',spy,{passive:true}); spy();
+})();
+</script>
+
+</body></html>
