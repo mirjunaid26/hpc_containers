@@ -1,6 +1,6 @@
-# HPC Containers
+# [Containerizing HPC Workflows](https://mirjunaid26.github.io/hpc_containers/)
 
-Welcome to the advanced Apptainer (formerly Singularity) tutorial. This guide is designed for High Performance Computing (HPC) users, System Admins, and Data Scientists who want to leverage containers for reproducible research.
+Welcome to the Containerizing HPC Workflows tutorial. This guide is designed for High Performance Computing (HPC) users, System Admins, and Data Scientists who want to leverage containers for reproducible research.
 
 Originally written for a 3-hour hands-on workshop ("Containerizing HPC Workflows with Singularity and Apptainer"), split into two 90-minute sessions.
 
