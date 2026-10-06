@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Containerizing HPC Workflows</title>
-<meta name="description" content="From namespaces and SIF images to Slurm jobs, GPUs, MPI and an LLM fine-tuning capstone: a write-up of the SciCoCo.nrw 2026 Apptainer workshop.">
+<meta name="description" content="From namespaces and SIF images to Slurm jobs, GPUs, MPI and an LLM fine-tuning capstone: a write-up of the SciCoCo.nrw 2026 Containers workshop.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -130,14 +130,14 @@ footer.end{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);fon
 
 <article>
 <header class="post">
-  <p class="kicker">Workshop write-up · SciCoCo.nrw 2026</p>
+  <p class="kicker">Workshop write-up · <a href="https://events.hifis.net/event/3911/" style="color:inherit">SciCoCo.nrw 2026</a></p>
   <h1>Containerizing HPC Workflows</h1>
   <p class="dek">From namespaces and single-file SIF images to Slurm jobs, GPUs, MPI and an LLM fine-tuning job on a real supercomputer.</p>
-  <div class="byline"><span><b>Junaid Mir</b> · AI/HPC Advisor, University of Duisburg-Essen &amp; HPC.NRW</span><span>October 6, 2026</span></div>
+  <div class="byline"><span><b>Junaid Mir</b> · AI and HPC Advisor, <a href="https://www.uni-due.de/en/" style="color:inherit">ZIM, University of Duisburg-Essen</a> &amp; <a href="https://hpc.dh.nrw/en/" style="color:inherit">HPC.NRW</a>
 </header>
 
 <p>On 22 September 2026 I ran a three-hour, hands-on workshop on containers for HPC at SciCoCo.nrw in RWTH Aachen. The room was mostly HPC admins and consultants from NRW universities and the Jülich Supercomputing Centre, plus researchers, PhD and masters students who wanted their software to run the same way on their laptop and on the cluster.</p>
-<p>This post is the long-form version of that workshop. It starts broad and adds detail as it goes, so you can form a correct mental model of the whole workflow before we get to the parts that fail in practice. Every command here was run on JURECA (Pre-Exascale Modular Supercomputer operated by Jülich Supercomputing Centre at Forschungszentrum Jülich) while preparing the session, and every exercise file is in the <a href="https://github.com/mirjunaid26/hpc_containers">workshop repository</a>.</p>
+<p>This post is the long-form version of that workshop. It starts broad and adds detail as it goes, so you can form a correct mental model of the whole workflow before we get to the parts that fail in practice. Every command here was run on <a href="https://www.fz-juelich.de/en/jsc/systems/supercomputers/jureca">JURECA</a> (Pre-Exascale Modular Supercomputer operated by Jülich Supercomputing Centre at Forschungszentrum Jülich) while preparing the session, and every exercise file is in the <a href="https://github.com/mirjunaid26/hpc_containers">workshop repository</a>.</p>
 
 <p>The post follows the two 90-minute sessions of the workshop:</p>
 <ol class="parts">
@@ -601,7 +601,7 @@ srun apptainer exec --nv --env HF_HOME=/hf_cache \
 <p>I skipped GUI sessions, instances for long-running services and the OCI-native runtimes in detail. Those will get their own posts.</p>
 
 <div class="note"><span class="lbl">Get in touch</span>
-<p>Found an error, or want to run this workshop at your site? Open an issue on the <a href="https://github.com/mirjunaid26/hpc_containers">workshop repository</a> or contact me through HPC.NRW.</p>
+<p>Found an error, or want to run this workshop at your site? Open an issue on the <a href="https://github.com/mirjunaid26/hpc_containers">workshop repository</a> or contact me through LinkedIn.</p>
 </div>
 
 <h3>Acknowledgements</h3>
@@ -618,7 +618,7 @@ srun apptainer exec --nv --env HF_HOME=/hf_cache \
 <li>Workshop listing, <a href="https://events.hifis.net/event/3911/contributions/24769/">SciCoCo.nrw 2026 on events.hifis.net</a></li>
 </ol>
 
-<footer class="end">Junaid Mir · AI/HPC Advisor, University of Duisburg-Essen &amp; HPC.nrw</footer>
+<footer class="end">Junaid Mir · AI and HPC Advisor, ZIM, University of Duisburg-Essen &amp; HPC.nrw</footer>
 </article>
 </div>
 
